@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: sentry-kubernetes
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: sentry-kubernetes
+    name: sentry-kubernetes
+  spec:
+    replicas: 1
+    selector:
+      app: sentry-kubernetes
+      deploymentconfig: sentry-kubernetes
+    template:
+      metadata:
+        labels:
+          app: sentry-kubernetes
+          deploymentconfig: sentry-kubernetes
+      spec:
+        containers:
+        - env:
+          - name: DNS
+            value: ${SENTRY_DNS}
+          - name: EVENT_NAMESPACE
+            value: ${NAMESPACE}
+          - name: ENV
+            value: ${SENTRY_ENVIRONMENT}
+          image: squiddy/sentry-kubernetes:latest
+          imagePullPolicy: Always
+          name: sentry-kubernetes
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - sentry-kubernetes
+        from:
+          kind: ImageStreamTag
+          name: sentry-kubernetes:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    labels:
+      app: sentry-kubernetes
+    name: sentry-kubernetes
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - from:
+        kind: DockerImage
+        name: docker.io/squiddy/sentry-kubernetes:latest
+      importPolicy: {}
+      name: latest
+      referencePolicy:
+        type: Source
+  
+parameters:
+  - name: SENTRY_DNS
+    description: DNS for sentry project.
+    required: true
+  - name: NAMESPACE
+    description: Namespace of which the events should be logged, most likely the current project.
+    required: true
+  - name: SENTRY_ENVIRONMENT
+    description: Environment setting in Sentry.
